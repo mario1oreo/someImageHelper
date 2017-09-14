@@ -1,5 +1,5 @@
 #!flask/bin/python
-from panjueshu.panjueshuTrain import *
+from susongwuyoutemp import susongwuyou
 from external.org_pocoo_werkzeug.werkzeug.utils import secure_filename
 from flask import Flask, request, jsonify
 import shutil,uuid
@@ -15,7 +15,7 @@ fmt = '%(asctime)s - %(filename)s: %(lineno)s - %(name)s - %(message)s'
 formatter = logging.Formatter(fmt)  # 实例化formatter
 handler.setFormatter(formatter)  # 为handler添加formatter
 
-logger = logging.getLogger('判决书验证码')  # 获取名为tst的logger
+logger = logging.getLogger('诉讼无忧验证码')  # 获取名为tst的logger
 logger.addHandler(handler)  # 为logger添加handler
 logger.setLevel(logging.INFO)
 
@@ -23,9 +23,11 @@ logger.setLevel(logging.INFO)
 
 
 app = Flask(__name__)
-UPLOAD_FOLDER = '/usr/local/spider/image/'
+UPLOAD_FOLDER = '/usr/local/spider/image/right/'
+UPLOAD_ERROR_FOLDER = '/usr/local/spider/image/error/'
 ALLOWED_EXTENSIONS = set(['png', 'jpg', 'jpeg', 'gif', 'bmp'])
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.config['UPLOAD_ERROR_FOLDER']=UPLOAD_ERROR_FOLDER
 
 
 def allowed_file(filename):
@@ -41,33 +43,44 @@ def upload_file():
         if file and allowed_file(file.filename):
             filename = secure_filename(file.filename)
             file.save(app.config['UPLOAD_FOLDER'] + filename)
-            cont = crack_captcha_with_file(app.config['UPLOAD_FOLDER'] + filename)
-            result['imageName'] = filename
+            cont = susongwuyou.crack_captcha(app.config['UPLOAD_FOLDER'] + filename)
+            imageName = str(uuid.uuid1()) + '_1_' + cont + '.bmp'
+            newName=UPLOAD_FOLDER + imageName
+            shutil.move(UPLOAD_FOLDER + filename, newName)
+            result['imageName'] = imageName
             result['imageValue'] = cont
             logger.info("=====>> uploadImage <<=====   imageName:%s   imageValue:%s", filename, cont)
     return jsonify(result)
 
 @app.route('/judge', methods=['POST'])
 def update_file():
-    filePath = request.form.get('imageName')
+    fileName = request.form.get('imageName')
     isRight = request.form.get('right')
-    con = request.form.get('imageValue')+'.bmp'
-    logger.info("=====>> judge <<=====   imageName:%s   imageValue:%s   right:%s", filePath, con, isRight)
+    cont = request.form.get('imageValue')
+    logger.info("=====>> judge <<=====   deal error captcha ===>> imageName:%s   imageValue:%s   right:%s", fileName, cont, isRight)
     newName = ''
-    if isRight == '1':
-        newName=UPLOAD_FOLDER + 'right/' + str(uuid.uuid1()) + '_' + isRight + '_' + con
-        shutil.move(UPLOAD_FOLDER + filePath, newName)
+    #if isRight == '1':
+    #    newName=UPLOAD_FOLDER + 'right/' + str(uuid.uuid1()) + '_' + isRight + '_' + cont
+    #    shutil.move(UPLOAD_FOLDER + fileName, newName)
+    #    result = {
+    #        'imageName': fileName,
+    #        'newName': newName
+    #    }
+    #    return jsonify(result)
+    #else:
+    if isRight == '0':
+        newName=UPLOAD_ERROR_FOLDER + str(uuid.uuid1()) + '_0_' +  cont + '.bmp'
+        shutil.move(UPLOAD_FOLDER + fileName, newName)
         result = {
-            'imageName': filePath,
+            'imageName': fileName,
             'newName': newName
         }
         return jsonify(result)
     else:
-        newName=UPLOAD_FOLDER + 'error/' + str(uuid.uuid1()) + '_' + isRight + '_' +  con
-        shutil.move(UPLOAD_FOLDER + filePath, newName)
         result = {
-            'imageName': filePath,
-            'newName': newName
+            'imageName': fileName,
+            'isRight':isRight,
+            'newName': '非失败状态(0)的不需要修改'
         }
         return jsonify(result)
 

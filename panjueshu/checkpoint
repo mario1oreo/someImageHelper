@@ -1,6 +1,0 @@
-model_checkpoint_path: "crack_capcha-step-31050-0.980469.model-31050"
-all_model_checkpoint_paths: "crack_capcha-step-23400-0.925781.model-23400"
-all_model_checkpoint_paths: "crack_capcha-step-24750-0.9375.model-24750"
-all_model_checkpoint_paths: "crack_capcha-step-26700-0.945313.model-26700"
-all_model_checkpoint_paths: "crack_capcha-step-27600-0.964844.model-27600"
-all_model_checkpoint_paths: "crack_capcha-step-31050-0.980469.model-31050"
