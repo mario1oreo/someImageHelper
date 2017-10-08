@@ -1,5 +1,6 @@
 #!flask/bin/python
 from susongwuyoutemp import susongwuyou
+# from susongwuyouBJ import susongwuyoubj
 from external.org_pocoo_werkzeug.werkzeug.utils import secure_filename
 from flask import Flask, request, jsonify
 import shutil,uuid
@@ -26,6 +27,9 @@ app = Flask(__name__)
 UPLOAD_FOLDER = '/usr/local/spider/image/right/'
 UPLOAD_ERROR_FOLDER = '/usr/local/spider/image/error/'
 ALLOWED_EXTENSIONS = set(['png', 'jpg', 'jpeg', 'gif', 'bmp'])
+IMG_TY_SUSONGWUYOU = 'susongwuyou'
+IMG_TY_SUSONGWUYOU_BJ = 'susongwuyouBJ'
+IMG_TY_PANJUESHU = 'panjueshu'
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['UPLOAD_ERROR_FOLDER']=UPLOAD_ERROR_FOLDER
 
@@ -42,13 +46,25 @@ def upload_file():
         file = request.files['file']
         if file and allowed_file(file.filename):
             filename = secure_filename(file.filename)
-            file.save(app.config['UPLOAD_FOLDER'] + filename)
-            cont = susongwuyou.crack_captcha(app.config['UPLOAD_FOLDER'] + filename)
+            imageType = request.form.get('imageType',IMG_TY_SUSONGWUYOU)
+            originalPath = UPLOAD_FOLDER + imageType + '/' + filename
+            #logger.info("originalPaht:"+originalPath)
+            file.save(originalPath)
+            cont = ''
+            if imageType == IMG_TY_SUSONGWUYOU:
+                cont = susongwuyou.crack_captcha(originalPath)
+                # cont=''
+            elif imageType == IMG_TY_PANJUESHU:
+                cont = ''#todo
+            elif imageType == IMG_TY_SUSONGWUYOU_BJ:
+                cont=''
+                # cont = susongwuyoubj.crack_captcha(originalPath)
             imageName = str(uuid.uuid1()) + '_1_' + cont + '.bmp'
-            newName=UPLOAD_FOLDER + imageName
-            shutil.move(UPLOAD_FOLDER + filename, newName)
+            newName=UPLOAD_FOLDER + imageType + '/' + imageName
+            shutil.move(originalPath, newName)
             result['imageName'] = imageName
             result['imageValue'] = cont
+            result['imageType'] = imageType
             logger.info("=====>> uploadImage <<=====   imageName:%s   imageValue:%s", filename, cont)
     return jsonify(result)
 
@@ -56,6 +72,7 @@ def upload_file():
 def update_file():
     fileName = request.form.get('imageName')
     isRight = request.form.get('right')
+    imageType = request.form.get('imageType')
     cont = request.form.get('imageValue')
     logger.info("=====>> judge <<=====   deal error captcha ===>> imageName:%s   imageValue:%s   right:%s", fileName, cont, isRight)
     newName = ''
@@ -69,8 +86,8 @@ def update_file():
     #    return jsonify(result)
     #else:
     if isRight == '0':
-        newName=UPLOAD_ERROR_FOLDER + str(uuid.uuid1()) + '_0_' +  cont + '.bmp'
-        shutil.move(UPLOAD_FOLDER + fileName, newName)
+        newName = str(uuid.uuid1()) + '_0_' +  cont + '.bmp'
+        shutil.move(UPLOAD_FOLDER + imageType + '/' + fileName, UPLOAD_ERROR_FOLDER + imageType + '/' + newName)
         result = {
             'imageName': fileName,
             'newName': newName
